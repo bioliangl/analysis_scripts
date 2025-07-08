@@ -30,5 +30,5 @@ Rscript draw_gene_structure.R -i analysis/input.gff -o /analysis/output -f png
 
 结果``./analysis/output.png``
 
-![output](.\analysis\output.png)
+![output](analysis/output.png)
 
