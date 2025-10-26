@@ -11,11 +11,17 @@ make_customdb <- function(eggnog_anno, genus, species){
       kegg_info <- read.table("https://rest.kegg.jp/list/organism", header = F, sep = "\t", fill = T, quote = "")
       kegg_info_plant <- kegg_info[grep("Plants",kegg_info$V4),]
       plant_pathway_info <- vector()
+      
       for (i in 1:length(kegg_info_plant$V2)){
-        file_url <- paste0("https://rest.kegg.jp/list/pathway/", kegg_info_plant[i,2], sep = "")
-        tmp_info <- read.table(file_url, header = F, sep = "\t", fill = T, quote = "")
-        tmp_K <- sub(kegg_info_plant[i,2], "ko", tmp_info$V1) %>% unique()
-        plant_pathway_info <- append(plant_pathway_info,tmp_K) 
+        file_url <- paste0("https://rest.kegg.jp/list/pathway/", kegg_info_plant[i,2])
+        tmp_info <- try(read.table(file_url, header = F, sep = "\t", fill = T, quote = ""), silent = TRUE)
+        if(!inherits(tmp_info, "try-error") && nrow(tmp_info) > 0) {
+          tmp_K <- sub(kegg_info_plant[i,2], "ko", tmp_info$V1) %>% unique()
+          plant_pathway_info <- append(plant_pathway_info, tmp_K) 
+        }
+        if(i %% 10 == 0) {
+          Sys.sleep(1)
+        }
       }
       plant_kegg_list <- plant_pathway_info %>% unique()
     }

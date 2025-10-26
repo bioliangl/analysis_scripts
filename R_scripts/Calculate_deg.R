@@ -1,6 +1,6 @@
-Calculate_DEG <- function(gene_cout,group){
+Calculate_DEG <- function(gene_count,group){
   library(DESeq2)
-  dds <- DESeqDataSetFromMatrix(countData = gene_cout,colData = group,design = ~ treatment)
+  dds <- DESeqDataSetFromMatrix(countData = gene_count,colData = group,design = ~ treatment)
   dds<-DESeq(dds)
   res_p<-results(dds)
   res_p <- res_p[order(res_p$padj, res_p$log2FoldChange, decreasing = c(FALSE, TRUE)), ]
