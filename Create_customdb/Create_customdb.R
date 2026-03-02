@@ -1,58 +1,53 @@
-Create_customdb <- function(eggnog_anno, genus, species){
+make_customdb <- function(eggnog_anno, genus, species){
   library(devtools)
   library(tidyverse)
   library(AnnotationForge)
-  if(!file.exists('makeorg_info.RData')){
-    library(tidyverse)
-    library(jsonlite)
-    library(purrr)
-    library(RCurl)
-    ## get KEGG info about plants
-    if(T){
-      kegg_info <- read.table("https://rest.kegg.jp/list/organism", header = F, sep = "\t", fill = T, quote = "")
-      kegg_info_plant <- kegg_info[grep("Plants",kegg_info$V4),]
-      plant_pathway_info <- vector()
-      for (i in 1:length(kegg_info_plant$V2)){
-        file_url <- paste0("https://rest.kegg.jp/list/pathway/", kegg_info_plant[i,2], sep = "")
-        tmp_info <- read.table(file_url, header = F, sep = "\t", fill = T, quote = "")
-        tmp_K <- sub(kegg_info_plant[i,2], "ko", tmp_info$V1) %>% unique()
-        plant_pathway_info <- append(plant_pathway_info,tmp_K) 
+    if(!file.exists('makeorg_info.RData')){
+      library(tidyverse)
+      library(jsonlite)
+      library(purrr)
+      library(RCurl)
+      ## get KEGG info about plants
+      read_table_retry <- insistently(read.table, rate_backoff(max_times = 3))
+      read_lines_retry <- insistently(read_lines, rate_backoff(max_times = 3))
+      if(T){
+        kegg_info <- read_table_retry("https://rest.kegg.jp/list/organism", header = F, sep = "\t", fill = T, quote = "")
+        kegg_info_plant <- kegg_info[grep("Plants",kegg_info$V4),]
+        plant_pathway_info <- vector()
+        for (i in 1:length(kegg_info_plant$V2)){
+          file_url <- paste0("https://rest.kegg.jp/list/pathway/", kegg_info_plant[i,2], sep = "")
+          tmp_info <- read_table_retry(file_url, header = F, sep = "\t", fill = T, quote = "")
+          tmp_K <- sub(kegg_info_plant[i,2], "ko", tmp_info$V1) %>% unique()
+          plant_pathway_info <- append(plant_pathway_info,tmp_K) 
+        }
+        plant_kegg_list <- plant_pathway_info %>% unique()
       }
-      plant_kegg_list <- plant_pathway_info %>% unique()
-    }
-    ## get KEGG related information
-    if(T){
-      kegg_josn_file <- read_lines("https://www.kegg.jp/kegg-bin/download_htext?htext=ko00001&format=json&filedir=")
-      pathway2name <- tibble(Pathway = character(), Name = character())
-      ko2pathway <- tibble(Ko = character(), Pathway = character())
-      kegg <- fromJSON(kegg_josn_file)
-      for (a in seq_along(kegg[["children"]][["children"]])) {
-        A <- kegg[["children"]][["name"]][[a]]
-        
-        for (b in seq_along(kegg[["children"]][["children"]][[a]][["children"]])) {
-          B <- kegg[["children"]][["children"]][[a]][["name"]][[b]]
-          
-          for (c in seq_along(kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]])) {
-            pathway_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["name"]][[c]]
-            
-            pathway_id <- str_match(pathway_info, "ko[0-9]{5}")[1]
-            pathway_name <- str_replace(pathway_info, " \\[PATH:ko[0-9]{5}\\]", "") %>% str_replace("[0-9]{5} ", "")
-            pathway2name <- rbind(pathway2name, tibble(Pathway = pathway_id, Name = pathway_name))
-            
-            kos_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]][[c]][["name"]]
-            
-            kos <- str_match(kos_info, "K[0-9]*")[, 1]
-            
-            ko2pathway <- rbind(ko2pathway, tibble(Ko = kos, Pathway = rep(pathway_id, length(kos))))
+      ## get KEGG related information
+      if(T){
+        kegg_josn_file <- read_lines_retry("https://www.kegg.jp/kegg-bin/download_htext?htext=ko00001&format=json&filedir=")
+        pathway2name <- tibble(Pathway = character(), Name = character())
+        ko2pathway <- tibble(Ko = character(), Pathway = character())
+        kegg <- fromJSON(kegg_josn_file)
+        for (a in seq_along(kegg[["children"]][["children"]])) {
+          for (b in seq_along(kegg[["children"]][["children"]][[a]][["children"]])) {
+            for (c in seq_along(kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]])) {
+              pathway_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["name"]][[c]]
+              if (!grepl("\\[PATH:", pathway_info)) next
+              pathway_id <- str_match(pathway_info, "ko[0-9]{5}")[1]
+              pathway_name <- str_replace(pathway_info, " \\[PATH:ko[0-9]{5}\\]", "") %>% str_replace("[0-9]{5} ", "")
+              pathway2name <- rbind(pathway2name, tibble(Pathway = pathway_id, Name = pathway_name))
+              kos_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]][[c]][["name"]]
+              kos <- str_match(kos_info, "K[0-9]*")[, 1]
+              ko2pathway <- rbind(ko2pathway, tibble(Ko = kos, Pathway = rep(pathway_id, length(kos))))
+            }
           }
         }
       }
+      ## save RData
+      save(ko2pathway, pathway2name, plant_kegg_list, file = "makeorg_info.RData")
+    }else{
+      load("makeorg_info.RData")
     }
-    ## save RData
-    save(ko2pathway, pathway2name, plant_kegg_list, file = "makeorg_info.RData")
-  }else{
-    load("makeorg_info.RData")
-  }
   ## load file
   if(T){
     emapper_ann <- read_delim(eggnog_anno,"\t", comment = "##",
@@ -119,12 +114,3 @@ Create_customdb <- function(eggnog_anno, genus, species){
     remotes::install_local(".", force = TRUE, upgrade = "never")
   }
 }
-
-
-
-
-
-
-
-
-
