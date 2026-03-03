@@ -32,12 +32,15 @@ make_customdb <- function(eggnog_anno, genus, species){
           for (b in seq_along(kegg[["children"]][["children"]][[a]][["children"]])) {
             for (c in seq_along(kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]])) {
               pathway_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["name"]][[c]]
-              if (!grepl("\\[PATH:", pathway_info)) next
+              if (!grepl("\\[", pathway_info)) next
               pathway_id <- str_match(pathway_info, "ko[0-9]{5}")[1]
-              pathway_name <- str_replace(pathway_info, " \\[PATH:ko[0-9]{5}\\]", "") %>% str_replace("[0-9]{5} ", "")
+              pathway_name <- str_replace(pathway_info, " \\[.*:ko[0-9]{5}\\]", "") %>% str_replace("[0-9]{5} ", "")
               pathway2name <- rbind(pathway2name, tibble(Pathway = pathway_id, Name = pathway_name))
+              
               kos_info <- kegg[["children"]][["children"]][[a]][["children"]][[b]][["children"]][[c]][["name"]]
+              
               kos <- str_match(kos_info, "K[0-9]*")[, 1]
+              
               ko2pathway <- rbind(ko2pathway, tibble(Ko = kos, Pathway = rep(pathway_id, length(kos))))
             }
           }
@@ -73,19 +76,9 @@ make_customdb <- function(eggnog_anno, genus, species){
                                              times = sapply(eggNOG_annotations_ko, length)),
                                    Ko = unlist(eggNOG_annotations_ko)) %>% na.omit() %>% dplyr::distinct()
     emapper_gene2ko$Ko <-  str_sub(emapper_gene2ko$Ko,4,-1)
-    
     emapper_gene2pathway_byko <-  left_join(emapper_gene2ko,ko2pathway, by = "Ko", relationship = "many-to-many") %>%
       dplyr::select(GID, Pathway) %>% na.omit() %>% dplyr::distinct()
-    
-    eggNOG_line_with_pathway <-  emapper_useful$KEGG_Pathway != ""
-    eggNOG_annotations_pathway <-  strsplit(emapper_useful$KEGG_Pathway[eggNOG_line_with_pathway],",")
-    gene2pathway_eggNOG_raw <-  data.frame(GID = rep(emapper_useful$query[eggNOG_line_with_pathway],
-                                                     times = sapply(eggNOG_annotations_pathway,length)),
-                                           Pathway = unlist(eggNOG_annotations_pathway)) %>% na.omit() %>% dplyr::distinct()
-    gene2pathway_eggNOG <-  gene2pathway_eggNOG_raw[grep("ko",gene2pathway_eggNOG_raw$Pathway),]  
-    emapper_gene2pathway <-  dplyr::bind_rows(emapper_gene2pathway_byko,gene2pathway_eggNOG) %>% dplyr::distinct()
-    
-    pathway2gene <- emapper_gene2pathway[emapper_gene2pathway$Pathway %in% plant_kegg_list,] %>% dplyr::select(Pathway, GID)
+    pathway2gene <- emapper_gene2pathway_byko[emapper_gene2pathway_byko$Pathway %in% plant_kegg_list,] %>% dplyr::select(Pathway, GID)
   }
   ## makedb
   if(T){
