@@ -1,4 +1,6 @@
 save_GO_plot <- function(go_data, save_name){
+  library(tidyverse)
+  library(scales)
   ## load GO data
   go <- read_csv(go_data)
   ## arrange raw data
@@ -77,6 +79,8 @@ save_GO_plot <- function(go_data, save_name){
 }
 
 save_KEGG_plot <- function(kegg_data, save_name){
+  library(tidyverse)
+  library(scales)
   ## load KEGG data
   kegg <- read_csv(kegg_data)
   ## arrange raw data
