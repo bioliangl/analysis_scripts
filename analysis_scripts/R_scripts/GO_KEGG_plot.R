@@ -1,8 +1,15 @@
 save_GO_plot <- function(go_data, save_name){
   library(tidyverse)
-  library(scales)
   ## load GO data
-  go <- read_csv(go_data)
+  go <- tryCatch(
+    read_csv(go_data),
+    error = function(e) NULL
+  )
+  
+  if (is.null(go) || nrow(go) == 0) {
+    message("GO data file is empty or contains only header: ", go_data, ". Skipping plot.")
+    return(invisible(NULL))
+  }
   ## arrange raw data
   go_top <- go %>%
     group_by(ONTOLOGY) %>%
@@ -27,9 +34,9 @@ save_GO_plot <- function(go_data, save_name){
   plot_height <- nrow(go_top) * row_height + extra_height
   ## get figure
   p <- ggplot(go_top,
-         aes(x = Count,
-             y = Description_wrapped,
-             fill = logP)) +
+              aes(x = Count,
+                  y = Description_wrapped,
+                  fill = logP)) +
     geom_bar(stat = "identity", width = 0.8,) +
     facet_wrap(~ ONTOLOGY,
                ncol = 1,
@@ -55,10 +62,11 @@ save_GO_plot <- function(go_data, save_name){
     theme(
       strip.text = element_text(
         face = "bold",
-        size = 12
+        size = 12,
+        family = "Arial"
       ),
-      axis.text.y = element_text(size = 10, colour = "black", face = "bold"),
-      axis.text.x = element_text(size = 10, colour = "black", face = "bold"),
+      axis.text.y = element_text(size = 10, colour = "black", family = "Arial", face = "bold"),
+      axis.text.x = element_text(size = 10, colour = "black", family = "Arial", face = "bold"),
       axis.title.x = element_text(size = 10),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
@@ -77,12 +85,18 @@ save_GO_plot <- function(go_data, save_name){
     limitsize = FALSE
   )
 }
-
 save_KEGG_plot <- function(kegg_data, save_name){
   library(tidyverse)
-  library(scales)
   ## load KEGG data
-  kegg <- read_csv(kegg_data)
+  kegg <- tryCatch(
+    read_csv(kegg_data),
+    error = function(e) NULL
+  )
+  
+  if (is.null(kegg) || nrow(kegg) == 0) {
+    message("KEGG data file is empty or contains only header: ", kegg_data, ". Skipping plot.")
+    return(invisible(NULL))
+  }
   ## arrange raw data
   kegg_top <- kegg %>%
     arrange(p.adjust) %>%
@@ -97,7 +111,7 @@ save_KEGG_plot <- function(kegg_data, save_name){
     ) %>%
     ungroup()
   ## set figure size
-  row_height <- 0.25
+  row_height <- 0.2
   extra_height <- 1.8
   plot_height <- nrow(kegg_top) * row_height + extra_height
   ## get figure
@@ -126,10 +140,11 @@ save_KEGG_plot <- function(kegg_data, save_name){
     theme(
       strip.text = element_text(
         face = "bold",
-        size = 12
+        size = 12,
+        family = "Arial"
       ),
-      axis.text.y = element_text(size = 10, colour = "black", face = "bold"),
-      axis.text.x = element_text(size = 10, colour = "black", face = "bold"),
+      axis.text.y = element_text(size = 10, colour = "black", family = "Arial", face = "bold"),
+      axis.text.x = element_text(size = 10, colour = "black", family = "Arial", face = "bold"),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       legend.position = "right",
